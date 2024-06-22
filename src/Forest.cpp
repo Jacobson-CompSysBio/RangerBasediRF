@@ -120,7 +120,7 @@ void Forest::initCpp(std::string dependent_variable_name, MemoryMode memory_mode
         endRead = std::chrono::system_clock::now();
 				std::chrono::duration<double> elapsedRead = endRead - startRead;
 				*verbose_out << "Data read processing time: " << elapsedRead.count() << "s." << std::endl;
-        *verbose_time << "File read time: " << elapsedRead.count() << "s." << std::endl;
+        //*verbose_time << "File read time: " << elapsedRead.count() << "s." << std::endl;
 
         if (rounding_error) {
           *verbose_out << "Warning: Rounding or Integer overflow occurred. Use FLOAT or DOUBLE precision to avoid this."
@@ -787,32 +787,58 @@ void Forest::writeImportanceFile(int loop) {
     throw std::runtime_error("Could not write to importance file: " + filename + ".");
   }
 
-  // Write importance to file
   std::cout << "Right before write in writeImportance\n" << std::flush;
   for (size_t i = 0; i < variable_importance.size(); ++i) {
     size_t varID = i;
-    //std::cout << "Right before data get splitVars\n" << std::flush;
-    //std::cout << "NoSplitVar Size: " << data->getNoSplitVariables().size() << '\n' << std::flush;
-    //std::cout << "NoSplitVar size: "  << data->no_split_variables.size();
     std::vector<size_t> noSplitVars = data->getNoSplitVariables();
-    // for (auto& skip : data->getNoSplitVariables()) {
     for (auto& skip : noSplitVars) {
-      //std::cout << "After get noSplitVars\n" << std::flush;
       if (varID >= skip) {
         ++varID;
       }
     }
 
     std::string variable_name = data->getVariableNames()[varID];
-    //std::cout << variable_name << ": " << variable_importance[i] << " Rank: " << rankStr << '\n';
     std::cout << std::flush;
-    //importance_file << variable_name << ": " << variable_importance[i] << std::endl;
     importance_file << variable_name << ": " << variable_importance[i] << '\n';
   }
 
   importance_file.close();
   std::cout << "Right before verbose in writeImportance\n" << std::flush;
   *verbose_out << "Saved variable importance to file " << filename << "." << std::endl;
+
+  // Write the weight file
+  float varSum = 0;   
+  for (size_t i = 0; i < variable_importance.size(); ++i) {
+	varSum = varSum + variable_importance[i]; 
+  }
+
+  filename = directory + "/" + output_prefix + ".splitWeights";
+  importance_file.open(filename, std::ios::out);
+  if (!importance_file.good()) {
+    throw std::runtime_error("Could not write to weight file: " + filename + ".");
+  }
+
+  std::cout << "Right before write in writeWeight\n" << std::flush;
+  for (size_t i = 0; i < variable_importance.size(); ++i) {
+    size_t varID = i;
+    std::vector<size_t> noSplitVars = data->getNoSplitVariables();
+    for (auto& skip : noSplitVars) {
+      if (varID >= skip) {
+        ++varID;
+      }
+    }
+
+    std::string variable_name = data->getVariableNames()[varID];
+    std::cout << std::flush;
+    importance_file << variable_importance[i]/varSum  << ' ';
+  }
+
+  importance_file.close();
+  std::cout << "Right before verbose in writeImportance\n" << std::flush;
+  *verbose_out << "Saved variable importance to file " << filename << "." << std::endl;
+
+
+
 }
 
 void Forest::writeSplitWeightsFile(std::string outputPrefix){
